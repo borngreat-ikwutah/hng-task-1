@@ -86,6 +86,85 @@ function isApiError(
   );
 }
 
+const profileCache = new Map<string, ProfileResponse>();
+const inFlightProfileCreations = new Map<string, Promise<ProfileResponse>>();
+
+async function createOrGetProfile(name: string, rawName: string) {
+  const normalizedName = normalizeName(name);
+
+  const cached = profileCache.get(normalizedName);
+  if (cached) {
+    return {
+      alreadyExists: true,
+      profile: {
+        ...cached,
+        name: rawName,
+      },
+    };
+  }
+
+  const existing = await findProfileByName(normalizedName);
+  if (existing) {
+    const response = toProfileResponse(existing);
+    profileCache.set(normalizedName, response);
+
+    return {
+      alreadyExists: true,
+      profile: {
+        ...response,
+        name: rawName,
+      },
+    };
+  }
+
+  const existingInFlight = inFlightProfileCreations.get(normalizedName);
+  if (existingInFlight) {
+    const profile = await existingInFlight;
+    return {
+      alreadyExists: true,
+      profile: {
+        ...profile,
+        name: rawName,
+      },
+    };
+  }
+
+  const creationPromise = (async () => {
+    const externalData = await buildExternalProfileData(normalizedName);
+
+    const created = await createProfile({
+      id: createUuidV7(),
+      name: normalizedName,
+      gender: externalData.gender,
+      genderProbability: externalData.genderProbability,
+      sampleSize: externalData.sampleSize,
+      age: externalData.age,
+      ageGroup: externalData.ageGroup,
+      countryId: externalData.countryId,
+      countryProbability: externalData.countryProbability,
+    });
+
+    const response = toProfileResponse(created);
+    profileCache.set(normalizedName, response);
+    return response;
+  })();
+
+  inFlightProfileCreations.set(normalizedName, creationPromise);
+
+  try {
+    const profile = await creationPromise;
+    return {
+      alreadyExists: false,
+      profile: {
+        ...profile,
+        name: rawName,
+      },
+    };
+  } finally {
+    inFlightProfileCreations.delete(normalizedName);
+  }
+}
+
 export async function createProfileController(c: Context) {
   try {
     const body = await c.req.json().catch(() => null);
@@ -117,43 +196,23 @@ export async function createProfileController(c: Context) {
       );
     }
 
-    const cached = await findProfileByName(name);
+    const result = await createOrGetProfile(name, rawName);
 
-    if (cached) {
+    if (result.alreadyExists) {
       return c.json<ApiSuccessWithMessage<ProfileResponse>>(
         {
           status: "success",
           message: "Profile already exists",
-          data: {
-            ...toProfileResponse(cached),
-            name: rawName,
-          },
+          data: result.profile,
         },
         200,
       );
     }
 
-    const externalData = await buildExternalProfileData(name);
-
-    const created = await createProfile({
-      id: createUuidV7(),
-      name,
-      gender: externalData.gender,
-      genderProbability: externalData.genderProbability,
-      sampleSize: externalData.sampleSize,
-      age: externalData.age,
-      ageGroup: externalData.ageGroup,
-      countryId: externalData.countryId,
-      countryProbability: externalData.countryProbability,
-    });
-
     return c.json<ApiSuccess<ProfileResponse>>(
       {
         status: "success",
-        data: {
-          ...toProfileResponse(created),
-          name: rawName,
-        },
+        data: result.profile,
       },
       201,
     );
