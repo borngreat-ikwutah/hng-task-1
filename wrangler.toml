@@ -1,0 +1,11 @@
+name = "hng-task-0"
+main = "src/index.ts"
+compatibility_date = "2026-04-17"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NODE_ENV = "production"
+
+# Example:
+# Add DATABASE_URL in Cloudflare Workers dashboard or via:
+# `wrangler secret put DATABASE_URL`
