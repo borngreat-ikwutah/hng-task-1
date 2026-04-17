@@ -307,7 +307,20 @@ Make sure to deploy the API and submit:
 
 ## Deployment on Cloudflare Workers
 
-This app can be deployed to **Cloudflare Workers**.
+This app can be deployed to **Cloudflare Workers** using **Cloudflare D1** as the database.
+
+### D1 setup
+
+Create a D1 database in Cloudflare and bind it to the Worker as `DB`.
+
+Example `wrangler` commands:
+
+```sh
+wrangler d1 create hng-task-1-db
+wrangler d1 execute hng-task-1-db --file=./src/db/migrations/0001_initial.sql
+```
+
+Then update `wrangler.toml` with the real `database_id` from Cloudflare.
 
 ### Worker setup
 - Entry point: `src/index.ts`
@@ -317,11 +330,16 @@ This app can be deployed to **Cloudflare Workers**.
 ### Wrangler config
 Use a `wrangler.toml` file similar to:
 
-```/dev/null/wrangler.toml#L1-9
+```/dev/null/wrangler.toml#L1-12
 name = "hng-task-1"
 main = "src/index.ts"
 compatibility_date = "2026-04-17"
 compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hng-task-1-db"
+database_id = "YOUR_D1_DATABASE_ID"
 
 [vars]
 NODE_ENV = "production"
@@ -329,18 +347,29 @@ NODE_ENV = "production"
 
 ### Environment variables
 Set the following in Cloudflare:
-- `DATABASE_URL`
+- `NODE_ENV`
+
+### D1 binding
+Bind your D1 database to the Worker as:
+- `DB`
+
+### Local testing
+For local development, you can use Wrangler to run the Worker against D1:
+
+```sh
+wrangler dev
+```
 
 ### Deploy steps
-1. Install Wrangler
-2. Add your secrets
+1. Create a Cloudflare D1 database
+2. Bind it in `wrangler.toml`
 3. Run the worker locally with `wrangler dev`
 4. Deploy with `wrangler deploy`
 
 ### Notes
 - CORS is enabled for `Access-Control-Allow-Origin: *`
 - The app returns JSON responses for all endpoints
-- Database access uses Drizzle ORM
+- Database access uses Drizzle ORM with Cloudflare D1
 
 ---
 

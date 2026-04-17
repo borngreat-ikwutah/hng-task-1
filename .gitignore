@@ -16,6 +16,7 @@ bunfig.toml
 .vercel
 .wrangler
 .wrangler/
+.wrangler.toml
 .wrangler.toml.backup
 
 # build artifacts

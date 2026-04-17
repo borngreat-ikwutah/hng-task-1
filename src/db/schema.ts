@@ -1,30 +1,20 @@
-import {
-  doublePrecision,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export const profiles = pgTable("profiles", {
-  id: uuid("id")
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+export const profiles = sqliteTable("profiles", {
+  id: text("id").primaryKey(),
   name: text("name").notNull().unique(),
 
   gender: text("gender").notNull(),
-  genderProbability: doublePrecision("gender_probability").notNull(),
-  sampleSize: doublePrecision("sample_size").notNull(),
+  genderProbability: integer("gender_probability").notNull(),
+  sampleSize: integer("sample_size").notNull(),
 
-  age: doublePrecision("age").notNull(),
+  age: integer("age").notNull(),
   ageGroup: text("age_group").notNull(),
 
   countryId: text("country_id").notNull(),
-  countryProbability: doublePrecision("country_probability").notNull(),
+  countryProbability: integer("country_probability").notNull(),
 
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .defaultNow()
-    .notNull(),
+  createdAt: text("created_at").notNull(),
 });
 
 export type Profile = typeof profiles.$inferSelect;

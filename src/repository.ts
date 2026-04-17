@@ -1,4 +1,5 @@
 import { and, eq, ilike } from "drizzle-orm";
+import type { Database } from "./db/client";
 import { getDb } from "./db/client";
 import { profiles } from "./db/schema";
 import type { AgeGroup } from "./utils";
@@ -13,35 +14,36 @@ export type ProfileRecord = typeof profiles.$inferSelect;
 export type NewProfileRecord = typeof profiles.$inferInsert;
 
 export async function findProfileById(
+  env: { DB: D1Database },
   id: string,
 ): Promise<ProfileRecord | undefined> {
-  const db = getDb();
+  const db = getDb(env);
   const result = await db
     .select()
     .from(profiles)
     .where(eq(profiles.id, id))
     .limit(1);
-
   return result[0];
 }
 
 export async function findProfileByName(
+  env: { DB: D1Database },
   name: string,
 ): Promise<ProfileRecord | undefined> {
-  const db = getDb();
+  const db = getDb(env);
   const result = await db
     .select()
     .from(profiles)
     .where(ilike(profiles.name, name))
     .limit(1);
-
   return result[0];
 }
 
 export async function findProfiles(
+  env: { DB: D1Database },
   filters: ProfileFilter = {},
 ): Promise<ProfileRecord[]> {
-  const db = getDb();
+  const db = getDb(env);
   const conditions = [];
 
   if (filters.gender) {
@@ -67,15 +69,19 @@ export async function findProfiles(
 }
 
 export async function createProfile(
+  env: { DB: D1Database },
   profile: NewProfileRecord,
 ): Promise<ProfileRecord> {
-  const db = getDb();
+  const db = getDb(env);
   const result = await db.insert(profiles).values(profile).returning();
   return result[0];
 }
 
-export async function deleteProfileById(id: string): Promise<boolean> {
-  const db = getDb();
+export async function deleteProfileById(
+  env: { DB: D1Database },
+  id: string,
+): Promise<boolean> {
+  const db = getDb(env);
   const result = await db
     .delete(profiles)
     .where(eq(profiles.id, id))
